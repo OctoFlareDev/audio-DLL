@@ -1,11 +1,10 @@
-#pragma comment (lib, "libavutil.a")
-#pragma comment (lib, "libavformat.a")
-#pragma comment (lib, "libavcodec.a")
-#pragma comment (lib, "libswresample.a")
-#pragma comment (lib, "libswscale.a")
-#pragma comment (lib, "mp3lame.lib")
+#pragma comment (lib, "libavutil.dll.a")
+#pragma comment (lib, "libavformat.dll.a")
+#pragma comment (lib, "libavcodec.dll.a")
+#pragma comment (lib, "libswresample.dll.a")
+#pragma comment (lib, "libswscale.dll.a")
+//#pragma comment (lib, "mp3lame.lib")
 
-#include <Windows.h>
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -31,7 +30,13 @@ extern "C"
 #include <libswresample/swresample.h>
 }
 
-#define GMEXPORT extern "C" __declspec (dllexport)
+#ifdef _WIN32
+#include <windows.h>
+#define GMEXPORT extern "C" __declspec(dllexport)
+#else
+#include <stdio.h> // For fopen
+#define GMEXPORT extern "C" __attribute__((visibility("default")))
+#endif
 
 #define STREAM_AUDIO_BIT_RATE			320000
 #define STREAM_AUDIO_SAMPLE_RATE		44100
@@ -90,10 +95,10 @@ wstring towstr(const string str)
 }
 
 // DLL main function
-BOOL WINAPI DllMain(HANDLE hinstDLL, DWORD dwReason, LPVOID lpvReserved)
-{
-	return TRUE;
-}
+//BOOL WINAPI DllMain(HANDLE hinstDLL, DWORD dwReason, LPVOID lpvReserved)
+//{
+//	return TRUE;
+//}
 
 // Create an AVRational
 AVRational rat(int num, int den)
@@ -128,7 +133,12 @@ GMEXPORT double audio_file_decode(const char *source, const char *dest)
 	try
 	{
 		// Start output stream
-		_wfopen_s(&outStream, &towstr(dest)[0], L"wb");
+		//_wfopen_s(&outStream, &towstr(dest)[0], L"wb"); 
+		#ifdef _WIN32
+			_wfopen_s(&outStream, &towstr(dest)[0], L"wb");
+		#else
+			outStream = fopen(dest, ""wb");  // assumes filename is UTF-8
+		#endif
 		if (!outStream)
 			throw - 1;
 
@@ -306,8 +316,13 @@ GMEXPORT double audio_file_add(const char* source)
 	files.push_back(file);
 
 	// Create reader
-	FILE* inStream;
-	_wfopen_s(&inStream, &towstr(source)[0], L"rb");
+	//_wfopen_s(&inStream, &towstr(source)[0], L"rb");
+	#ifdef _WIN32
+		FILE* inStream = nullptr;
+		_wfopen_s(&inStream, &towstr(source)[0], L"rb");
+	#else
+		FILE* inStream = fopen(source, "rb");  // assumes filename is UTF-8
+	#endif
 
 	// Read to EOF, store data in frames
 	size_t bufferSize = av_samples_get_buffer_size(NULL, STREAM_AUDIO_CHANNELS, audioCodecContext->frame_size, STREAM_AUDIO_SAMPLE_FORMAT_MP3, 0);
@@ -456,7 +471,7 @@ void File::Unload()
 }
 
 // Combine files together
-GMEXPORT double audio_combine()
+GMEXPORT double __stdcall audio_combine()
 {
 	uint64_t audioFrameNum = 0;
 	int dataSize = sizeof(STREAM_AUDIO_SAMPLE_TYPE);
