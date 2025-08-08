@@ -31,6 +31,7 @@ extern "C"
 }
 
 #ifdef _WIN32
+#include <stdio.h>
 #include <windows.h>
 #define GMEXPORT extern "C" __declspec(dllexport)
 #else
@@ -134,11 +135,7 @@ GMEXPORT double audio_file_decode(const char *source, const char *dest)
 	{
 		// Start output stream
 		//_wfopen_s(&outStream, &towstr(dest)[0], L"wb"); 
-		#ifdef _WIN32
-			_wfopen_s(&outStream, &towstr(dest)[0], L"wb");
-		#else
-			outStream = fopen(dest, ""wb");  // assumes filename is UTF-8
-		#endif
+		outStream = fopen(dest, "wb");  // assumes filename is UTF-8
 		if (!outStream)
 			throw - 1;
 
@@ -317,12 +314,7 @@ GMEXPORT double audio_file_add(const char* source)
 
 	// Create reader
 	//_wfopen_s(&inStream, &towstr(source)[0], L"rb");
-	#ifdef _WIN32
-		FILE* inStream = nullptr;
-		_wfopen_s(&inStream, &towstr(source)[0], L"rb");
-	#else
-		FILE* inStream = fopen(source, "rb");  // assumes filename is UTF-8
-	#endif
+	FILE* inStream = fopen(source, "rb");  // assumes filename is UTF-8
 
 	// Read to EOF, store data in frames
 	size_t bufferSize = av_samples_get_buffer_size(NULL, STREAM_AUDIO_CHANNELS, audioCodecContext->frame_size, STREAM_AUDIO_SAMPLE_FORMAT_MP3, 0);
